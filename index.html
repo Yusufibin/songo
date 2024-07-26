@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu de Songo Animé</title>
+    <title>Jeu de Songo Amélioré</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -70,6 +70,16 @@
             position: absolute;
             transition: all 0.5s ease;
         }
+        .hand {
+            width: 30px;
+            height: 30px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"></path><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"></path><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path></svg>');
+            background-size: contain;
+            position: absolute;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -79,12 +89,13 @@
                 <div class="store" id="store2">0</div>
                 <div>
                     <div class="row">
+                        <div class="pit" data-pit="13">5</div>
+                        <div class="pit" data-pit="12">5</div>
                         <div class="pit" data-pit="11">5</div>
                         <div class="pit" data-pit="10">5</div>
                         <div class="pit" data-pit="9">5</div>
                         <div class="pit" data-pit="8">5</div>
                         <div class="pit" data-pit="7">5</div>
-                        <div class="pit" data-pit="6">5</div>
                     </div>
                     <div class="row">
                         <div class="pit" data-pit="0">5</div>
@@ -93,6 +104,7 @@
                         <div class="pit" data-pit="3">5</div>
                         <div class="pit" data-pit="4">5</div>
                         <div class="pit" data-pit="5">5</div>
+                        <div class="pit" data-pit="6">5</div>
                     </div>
                 </div>
                 <div class="store" id="store1">0</div>
@@ -100,12 +112,14 @@
         </div>
         <div id="message">Tour du joueur 1</div>
     </div>
+    <div class="hand"></div>
 
     <script>
-        const board = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5];
+        const board = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5];
         const stores = [0, 0];
         let currentPlayer = 1;
         let isAnimating = false;
+        const hand = document.querySelector('.hand');
 
         function createSeeds() {
             document.querySelectorAll('.pit, .store').forEach(element => {
@@ -122,7 +136,7 @@
         }
 
         function updateBoard() {
-            for (let i = 0; i < 12; i++) {
+            for (let i = 0; i < 14; i++) {
                 const pit = document.querySelector(`[data-pit="${i}"]`);
                 pit.innerHTML = '';
                 for (let j = 0; j < board[i]; j++) {
@@ -138,51 +152,46 @@
         }
 
         function checkWinner() {
-            if (stores[0] >= 40) {
-                alert("Le joueur 1 a gagné !");
+            if (stores[0] >= 40 || stores[1] >= 40) {
+                const winner = stores[0] >= 40 ? 1 : 2;
+                alert(`Le joueur ${winner} a gagné !`);
                 return true;
-            } else if (stores[1] >= 40) {
-                alert("Le joueur 2 a gagné !");
+            }
+            const remainingSeeds = board.reduce((a, b) => a + b, 0);
+            if (remainingSeeds < 10) {
+                const winner = stores[0] > stores[1] ? 1 : 2;
+                alert(`Le jeu est terminé. Le joueur ${winner} a gagné !`);
                 return true;
             }
             return false;
         }
 
-        async function animateMove(from, to) {
+        async function animateHand(from, to) {
             const fromPit = document.querySelector(`[data-pit="${from}"]`);
             const toPit = to === 'store1' || to === 'store2' ? 
                 document.getElementById(to) : 
                 document.querySelector(`[data-pit="${to}"]`);
             
-            const seed = fromPit.querySelector('.seed');
-            if (!seed) return;
-
-            const seedClone = seed.cloneNode(true);
-            document.body.appendChild(seedClone);
-
             const fromRect = fromPit.getBoundingClientRect();
             const toRect = toPit.getBoundingClientRect();
 
-            seedClone.style.position = 'fixed';
-            seedClone.style.left = `${fromRect.left + fromRect.width / 2}px`;
-            seedClone.style.top = `${fromRect.top + fromRect.height / 2}px`;
-            seedClone.style.transition = 'all 0.5s ease';
-
-            await new Promise(resolve => setTimeout(resolve, 50));
-
-            seedClone.style.left = `${toRect.left + toRect.width / 2}px`;
-            seedClone.style.top = `${toRect.top + toRect.height / 2}px`;
+            hand.style.display = 'block';
+            hand.style.left = `${fromRect.left + fromRect.width / 2}px`;
+            hand.style.top = `${fromRect.top + fromRect.height / 2}px`;
 
             await new Promise(resolve => setTimeout(resolve, 500));
 
-            document.body.removeChild(seedClone);
-            toPit.appendChild(seed);
+            hand.style.left = `${toRect.left + toRect.width / 2}px`;
+            hand.style.top = `${toRect.top + toRect.height / 2}px`;
+
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            hand.style.display = 'none';
         }
 
         async function play(pit) {
             if (isAnimating) return;
-            if (currentPlayer === 1 && pit > 5) return;
-            if (currentPlayer === 2 && pit < 6) return;
+            if ((currentPlayer === 1 && pit > 6) || (currentPlayer === 2 && pit < 7)) return;
             if (board[pit] === 0) return;
 
             isAnimating = true;
@@ -190,23 +199,25 @@
             board[pit] = 0;
             let currentPit = pit;
 
+            await animateHand(pit, (pit + 1) % 14);
+
             for (let i = 0; i < seeds; i++) {
-                currentPit = (currentPit + 1) % 12;
-                await animateMove(pit, currentPit);
+                currentPit = (currentPit + 1) % 14;
                 board[currentPit]++;
+                if (i < seeds - 1) {
+                    await animateHand(currentPit, (currentPit + 1) % 14);
+                }
             }
 
             // Capture
-            while (currentPit >= 0 && currentPit < 12 &&
-                   ((currentPlayer === 1 && currentPit > 5) || (currentPlayer === 2 && currentPit < 6)) &&
-                   (board[currentPit] === 2 || board[currentPit] === 3)) {
+            while (currentPit >= 0 && currentPit < 14 &&
+                   ((currentPlayer === 1 && currentPit > 6) || (currentPlayer === 2 && currentPit < 7)) &&
+                   (board[currentPit] === 2 || board[currentPit] === 3 || board[currentPit] === 4)) {
                 const capturedSeeds = board[currentPit];
                 board[currentPit] = 0;
                 stores[currentPlayer - 1] += capturedSeeds;
-                for (let i = 0; i < capturedSeeds; i++) {
-                    await animateMove(currentPit, `store${currentPlayer}`);
-                }
-                currentPit = (currentPit - 1 + 12) % 12;
+                await animateHand(currentPit, `store${currentPlayer}`);
+                currentPit = (currentPit - 1 + 14) % 14;
             }
 
             updateBoard();
@@ -223,7 +234,7 @@
         }
 
         function computerPlay() {
-            const validMoves = [6, 7, 8, 9, 10, 11].filter(pit => board[pit] > 0);
+            const validMoves = [7, 8, 9, 10, 11, 12, 13].filter(pit => board[pit] > 0);
             if (validMoves.length === 0) {
                 alert("L'ordinateur ne peut pas jouer. Fin de la partie !");
                 return;
