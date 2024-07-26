@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeu de Songo Animé</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .game-container {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .board {
+            display: flex;
+            flex-direction: column;
+        }
+        .row {
+            display: flex;
+        }
+        .pit {
+            width: 60px;
+            height: 60px;
+            border: 2px solid #333;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 5px;
+            cursor: pointer;
+            font-size: 18px;
+            background-color: #e0e0e0;
+            position: relative;
+            overflow: hidden;
+        }
+        .store {
+            width: 80px;
+            height: 150px;
+            border: 2px solid #333;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 5px;
+            font-size: 24px;
+            background-color: #d0d0d0;
+            position: relative;
+            overflow: hidden;
+        }
+        #message {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .seed {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #8B4513;
+            position: absolute;
+            transition: all 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="board">
+            <div class="row">
+                <div class="store" id="store2">0</div>
+                <div>
+                    <div class="row">
+                        <div class="pit" data-pit="11">5</div>
+                        <div class="pit" data-pit="10">5</div>
+                        <div class="pit" data-pit="9">5</div>
+                        <div class="pit" data-pit="8">5</div>
+                        <div class="pit" data-pit="7">5</div>
+                        <div class="pit" data-pit="6">5</div>
+                    </div>
+                    <div class="row">
+                        <div class="pit" data-pit="0">5</div>
+                        <div class="pit" data-pit="1">5</div>
+                        <div class="pit" data-pit="2">5</div>
+                        <div class="pit" data-pit="3">5</div>
+                        <div class="pit" data-pit="4">5</div>
+                        <div class="pit" data-pit="5">5</div>
+                    </div>
+                </div>
+                <div class="store" id="store1">0</div>
+            </div>
+        </div>
+        <div id="message">Tour du joueur 1</div>
+    </div>
+
+    <script>
+        const board = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5];
+        const stores = [0, 0];
+        let currentPlayer = 1;
+        let isAnimating = false;
+
+        function createSeeds() {
+            document.querySelectorAll('.pit, .store').forEach(element => {
+                const count = parseInt(element.textContent);
+                element.innerHTML = '';
+                for (let i = 0; i < count; i++) {
+                    const seed = document.createElement('div');
+                    seed.className = 'seed';
+                    seed.style.left = `${Math.random() * 40 + 10}px`;
+                    seed.style.top = `${Math.random() * 40 + 10}px`;
+                    element.appendChild(seed);
+                }
+            });
+        }
+
+        function updateBoard() {
+            for (let i = 0; i < 12; i++) {
+                const pit = document.querySelector(`[data-pit="${i}"]`);
+                pit.innerHTML = '';
+                for (let j = 0; j < board[i]; j++) {
+                    const seed = document.createElement('div');
+                    seed.className = 'seed';
+                    seed.style.left = `${Math.random() * 40 + 10}px`;
+                    seed.style.top = `${Math.random() * 40 + 10}px`;
+                    pit.appendChild(seed);
+                }
+            }
+            document.getElementById('store1').textContent = stores[0];
+            document.getElementById('store2').textContent = stores[1];
+        }
+
+        function checkWinner() {
+            if (stores[0] >= 40) {
+                alert("Le joueur 1 a gagné !");
+                return true;
+            } else if (stores[1] >= 40) {
+                alert("Le joueur 2 a gagné !");
+                return true;
+            }
+            return false;
+        }
+
+        async function animateMove(from, to) {
+            const fromPit = document.querySelector(`[data-pit="${from}"]`);
+            const toPit = to === 'store1' || to === 'store2' ? 
+                document.getElementById(to) : 
+                document.querySelector(`[data-pit="${to}"]`);
+            
+            const seed = fromPit.querySelector('.seed');
+            if (!seed) return;
+
+            const seedClone = seed.cloneNode(true);
+            document.body.appendChild(seedClone);
+
+            const fromRect = fromPit.getBoundingClientRect();
+            const toRect = toPit.getBoundingClientRect();
+
+            seedClone.style.position = 'fixed';
+            seedClone.style.left = `${fromRect.left + fromRect.width / 2}px`;
+            seedClone.style.top = `${fromRect.top + fromRect.height / 2}px`;
+            seedClone.style.transition = 'all 0.5s ease';
+
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            seedClone.style.left = `${toRect.left + toRect.width / 2}px`;
+            seedClone.style.top = `${toRect.top + toRect.height / 2}px`;
+
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            document.body.removeChild(seedClone);
+            toPit.appendChild(seed);
+        }
+
+        async function play(pit) {
+            if (isAnimating) return;
+            if (currentPlayer === 1 && pit > 5) return;
+            if (currentPlayer === 2 && pit < 6) return;
+            if (board[pit] === 0) return;
+
+            isAnimating = true;
+            let seeds = board[pit];
+            board[pit] = 0;
+            let currentPit = pit;
+
+            for (let i = 0; i < seeds; i++) {
+                currentPit = (currentPit + 1) % 12;
+                await animateMove(pit, currentPit);
+                board[currentPit]++;
+            }
+
+            // Capture
+            while (currentPit >= 0 && currentPit < 12 &&
+                   ((currentPlayer === 1 && currentPit > 5) || (currentPlayer === 2 && currentPit < 6)) &&
+                   (board[currentPit] === 2 || board[currentPit] === 3)) {
+                const capturedSeeds = board[currentPit];
+                board[currentPit] = 0;
+                stores[currentPlayer - 1] += capturedSeeds;
+                for (let i = 0; i < capturedSeeds; i++) {
+                    await animateMove(currentPit, `store${currentPlayer}`);
+                }
+                currentPit = (currentPit - 1 + 12) % 12;
+            }
+
+            updateBoard();
+            isAnimating = false;
+
+            if (checkWinner()) return;
+
+            currentPlayer = 3 - currentPlayer;
+            document.getElementById('message').textContent = `Tour du joueur ${currentPlayer}`;
+
+            if (currentPlayer === 2) {
+                setTimeout(computerPlay, 1000);
+            }
+        }
+
+        function computerPlay() {
+            const validMoves = [6, 7, 8, 9, 10, 11].filter(pit => board[pit] > 0);
+            if (validMoves.length === 0) {
+                alert("L'ordinateur ne peut pas jouer. Fin de la partie !");
+                return;
+            }
+            const randomPit = validMoves[Math.floor(Math.random() * validMoves.length)];
+            play(randomPit);
+        }
+
+        document.querySelectorAll('.pit').forEach(pit => {
+            pit.addEventListener('click', () => {
+                if (currentPlayer === 1 && !isAnimating) {
+                    play(parseInt(pit.dataset.pit));
+                }
+            });
+        });
+
+        createSeeds();
+    </script>
+</body>
+</html>
