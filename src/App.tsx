@@ -498,7 +498,7 @@ function App() {
                       <div>
                         <strong>
                           {live.winner === null
-                            ? 'Une belle partie, à égalité.'
+                            ? 'Partie nulle. La revanche vous attend.'
                             : `${session.names[live.winner]} remporte la partie !`}
                         </strong>
                         <p>
