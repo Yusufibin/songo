@@ -11,7 +11,8 @@ import {
   History,
   Leaf,
   Lightbulb,
-  MoreHorizontal,
+  Maximize2,
+  Minimize2,
   Plus,
   RotateCcw,
   Settings2,
@@ -45,7 +46,7 @@ import {
   saveSession,
 } from './lib/storage';
 import type { Session } from './lib/storage';
-import { playSound } from './lib/sound';
+import { useMoveAnimation } from './hooks/useMoveAnimation';
 type View = 'play' | 'learn' | 'games';
 type Dialog = 'new' | 'settings' | 'rules' | 'clear' | null;
 const endTexts = {
@@ -61,6 +62,7 @@ function App() {
   );
   const states = useMemo(() => replay(session.moves), [session.moves]);
   const live = states.at(-1)!;
+  const [immersive, setImmersive] = useState(() => matchMedia('(max-width: 700px)').matches);
   const [view, setView] = useState<View>('play');
   const [dialog, setDialog] = useState<Dialog>(null);
   const [replayIndex, setReplayIndex] = useState<number | null>(null);
@@ -81,9 +83,22 @@ function App() {
     needRefresh: [needRefresh],
     updateServiceWorker,
   } = useRegisterSW();
+  const { visual, playback, animating } = useMoveAnimation(
+    state,
+    session.id,
+    replayIndex !== null,
+    view === 'play' && !dialog && !conflict,
+    prefs.motion,
+    prefs.sound,
+  );
   const isHuman = session.mode === 'local' || live.current === 0;
   const enabled =
-    live.status === 'playing' && isHuman && replayIndex === null && !dialog && !conflict;
+    live.status === 'playing' &&
+    isHuman &&
+    replayIndex === null &&
+    !dialog &&
+    !conflict &&
+    !animating;
   useEffect(() => {
     try {
       saveSession(session);
@@ -146,7 +161,7 @@ function App() {
     return () => {
       hintWorker.current?.terminate();
     };
-  }, [session.moves, session.id]);
+  }, [session.moves, session.id, replayIndex, view]);
   useEffect(() => {
     if (
       session.mode !== 'solo' ||
@@ -155,7 +170,8 @@ function App() {
       replayIndex !== null ||
       dialog ||
       view !== 'play' ||
-      conflict
+      conflict ||
+      animating
     ) {
       setThinking(false);
       return;
@@ -172,7 +188,6 @@ function App() {
                 ? { ...current, moves: [...current.moves, pit] }
                 : current,
             );
-            if (prefs.sound) playSound();
           }
           setThinking(false);
         },
@@ -206,13 +221,15 @@ function App() {
     view,
     conflict,
     prefs.sound,
+    prefs.motion,
+    animating,
   ]);
   function openNew() {
     setDialog('new');
   }
   function makeMove(pit: number) {
     if (!enabled || !legalMoves(live).includes(pit)) return;
-    if (prefs.sound) playSound();
+    setSelected(null);
     setSession((current) => {
       const now = replay(current.moves).at(-1)!;
       return current.id === session.id &&
@@ -272,10 +289,14 @@ function App() {
   }
   const switchView = (next: View) => {
     setView(next);
+    setSelected(null);
     setReplayIndex(null);
   };
   return (
-    <div className="app-shell">
+    <div
+      className={`app-shell ${immersive && view === 'play' ? 'is-immersive' : ''}`}
+      data-view={view}
+    >
       <a href="#main" className="skip-link">
         Aller au contenu
       </a>
@@ -356,8 +377,29 @@ function App() {
       </aside>
       <div className="main-shell">
         <header className="topbar">
-          <span>Un peu de recul. Un coup d’avance.</span>
+          <span className="topbar-title">
+            Songo<span className="brand-period">.</span> <small>ARÈNE EKANG</small>
+          </span>
           <div>
+            {view === 'play' && immersive && (
+              <button
+                className="icon-button immersive-new"
+                onClick={openNew}
+                aria-label="Nouvelle partie"
+              >
+                <Plus size={21} />
+              </button>
+            )}
+            {view === 'play' && (
+              <button
+                className="icon-button"
+                onClick={() => setImmersive(!immersive)}
+                aria-label={immersive ? 'Quitter le mode immersif' : 'Agrandir le plateau'}
+                aria-pressed={immersive}
+              >
+                {immersive ? <Minimize2 size={19} /> : <Maximize2 size={19} />}
+              </button>
+            )}
             <span className="local-status">
               <span className="status-dot" />
               {online ? 'Prêt à jouer' : 'Hors ligne'}
@@ -434,15 +476,15 @@ function App() {
           )}
           {view === 'play' && (
             <>
-              <section className="page-heading">
+              <section className="page-heading play-heading">
                 <div>
                   <span className="eyebrow">
-                    <span className="tiny-diamond">◇</span> LA TRADITION A DE L’AVENIR
+                    <span className="tiny-diamond">◇</span> L’ARÈNE EKANG
                   </span>
                   <h1>
-                    Chaque graine compte<span>.</span>
+                    À vous de jouer<span>.</span>
                   </h1>
-                  <p>Un plateau, deux esprits. Faites germer votre prochaine victoire.</p>
+                  <p>70 graines. Deux camps. Votre prochaine victoire.</p>
                 </div>
                 <button className="primary-button" onClick={openNew}>
                   <Plus size={18} /> Nouvelle partie
@@ -470,29 +512,31 @@ function App() {
                       </div>
                     </div>
                     <button
-                      className="icon-button"
+                      className="icon-button arena-new"
                       onClick={openNew}
-                      aria-label="Configurer une nouvelle partie"
+                      aria-label={immersive ? 'Nouvelle partie' : 'Configurer une nouvelle partie'}
                     >
-                      <MoreHorizontal size={22} />
+                      <Plus size={22} />
                     </button>
                   </div>
                   <div className="turn-strip">
                     <span aria-live="polite" className={`turn-pill ${thinking ? 'thinking' : ''}`}>
                       <span className="status-dot" />
-                      {replayIndex !== null
-                        ? `Relecture · coup ${replayIndex}`
-                        : live.status === 'finished'
-                          ? 'Partie terminée'
-                          : thinking
-                            ? 'L’ordinateur réfléchit'
-                            : `Au tour de ${session.names[live.current]}`}
+                      {animating
+                        ? 'Les graines sont en mouvement'
+                        : replayIndex !== null
+                          ? `Relecture · coup ${replayIndex}`
+                          : live.status === 'finished'
+                            ? 'Partie terminée'
+                            : thinking
+                              ? 'L’ordinateur réfléchit'
+                              : `Au tour de ${session.names[live.current]}`}
                     </span>
                     <span className="move-number">
                       Coup {state.ply.toString().padStart(2, '0')}
                     </span>
                   </div>
-                  {live.status === 'finished' && replayIndex === null && (
+                  {live.status === 'finished' && replayIndex === null && !animating && (
                     <div className="result-banner">
                       <Trophy size={27} />
                       <div>
@@ -511,7 +555,7 @@ function App() {
                     </div>
                   )}
                   <Board
-                    state={state}
+                    state={visual}
                     names={session.names}
                     enabled={enabled}
                     hint={hint}
@@ -520,6 +564,8 @@ function App() {
                     onPlay={makeMove}
                     onSelect={setSelected}
                     thinking={thinking}
+                    playback={playback}
+                    animating={animating}
                     replaying={replayIndex !== null}
                   />
                   <div className="game-controls">
@@ -530,7 +576,8 @@ function App() {
                           !session.moves.length ||
                           replayIndex !== null ||
                           live.status === 'finished' ||
-                          conflict
+                          conflict ||
+                          animating
                         }
                         onClick={undo}
                       >
@@ -617,18 +664,18 @@ function App() {
                     <div className="score-progress-label">
                       <span>Votre récolte</span>
                       <strong>
-                        {state.scores[0]} <span>/ {VICTORY_SEEDS}</span>
+                        {visual.scores[0]} <span>/ {VICTORY_SEEDS}</span>
                       </strong>
                     </div>
                     <div
                       className="score-progress"
                       role="progressbar"
                       aria-label="Votre récolte"
-                      aria-valuenow={Math.min(40, state.scores[0])}
+                      aria-valuenow={Math.min(40, visual.scores[0])}
                       aria-valuemin={0}
                       aria-valuemax={40}
                     >
-                      <span style={{ width: `${Math.min(100, (state.scores[0] / 40) * 100)}%` }} />
+                      <span style={{ width: `${Math.min(100, (visual.scores[0] / 40) * 100)}%` }} />
                     </div>
                   </section>
                   <GameHistory

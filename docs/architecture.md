@@ -6,6 +6,16 @@ Cette application est un client statique React/TypeScript. Le calcul et les donn
 
 Le moteur utilise quatorze cases et deux greniers hors circuit. Ses transitions sont déterministes et indépendantes de la présentation. Une recherche IA utilise les mêmes transitions que le joueur, avec un budget de temps et une profondeur plafonnée. Le worker est arrêté lorsque la session change, que l’utilisateur relit un coup ou ouvre une autre vue. Un résultat périmé ne peut pas remplacer une nouvelle session.
 
+## Présentation et interactions
+
+`presentation.ts` produit une suite d’instantanés visuels à partir d’une transition du moteur : ramassage, dépôts, captures, dons et collecte de fin de partie. Chaque instantané conserve les 70 graines en comptant celles encore en main. Les captures spéciales d’une seule graine gardent les autres dans la case.
+
+`useMoveAnimation` orchestre cette suite sans modifier la session. Le coup légal est sauvegardé immédiatement ; seuls le plateau affiché et le score suivent l’animation. Le joueur et le worker IA attendent la fin du semis. Ouvrir un dialogue, changer de session/vue, relire un coup ou masquer l’onglet annule les minuteries et rejoint l’état validé. La préférence locale et `prefers-reduced-motion` permettent de passer directement au résultat.
+
+La première pression sélectionne une case et prévisualise le parcours ; une seconde pression sur la même case, ou le bouton « Semer », confirme le coup. Le survol et le focus ne déclenchent aucun coup ni sélection persistante. `Board` affiche le même circuit de quatorze cases dans les deux orientations : deux colonnes en portrait, deux rangées en paysage. Les indices du moteur restent identiques. Les vols de graines utilisent les positions réelles des cases et des scores dans le DOM.
+
+`styles.css` conserve les structures communes et les vues secondaires ; `arena.css` porte le thème de jeu, les états tactiles, les orientations et le mode immersif, activé initialement sur un écran de 700 px ou moins.
+
 ## Données
 
 La clé `songo.session.v2` contient une session : identifiant, mode, noms, difficulté, date et liste de coups. Les limites sont de 600 coups, 24 caractères par prénom et 50 Ko par fichier importé. Le moteur reconstruit et valide chaque état. Un import incorrect laisse le plateau actuel intact.
@@ -31,5 +41,7 @@ Le moteur pur peut être réutilisé côté serveur, mais le client actuel ne fo
 Les résultats du navigateur ne doivent jamais servir à alimenter un classement public : ils ne sont pas signés par un serveur.
 
 ## Vérifications
+
+Les tests de présentation vérifient aussi les instantanés de 12 parties complètes, les captures en chaîne, les dons et les captures spéciales. Les tests navigateur ajoutent la sélection tactile, sa confirmation/annulation, l’interruption du semis, la réduction des mouvements, les cibles tactiles et six dimensions portrait/paysage (320 à 844 px).
 
 Les tests unitaires couvrent les cas spécifiques de semailles/captures/solidarité et simulent 60 parties reproductibles. Les tests navigateur couvrent les parcours sur desktop et mobile, le rejeu, la persistance, l’import/export, l’IA, le mode hors ligne et les règles axe WCAG A/AA. Ces contrôles automatisés ne remplacent pas un audit complet avec lecteurs d’écran ni des essais sur tous les appareils.

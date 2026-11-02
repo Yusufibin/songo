@@ -1,21 +1,29 @@
 import { createGame, legalMoves, playMove } from '../../src/game/engine';
 import { test, expect } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+async function showMenu(page: Page) {
+  const exit = page.getByRole('button', { name: 'Quitter le mode immersif' });
+  if (await exit.isVisible()) await exit.click();
+}
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
 });
 test('solo play, AI, save reload, hint, undo, replay and new game', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await expect(page.getByRole('heading', { name: 'Chaque graine compte.' })).toBeVisible();
+  await expect(page.locator('.wood-board')).toBeVisible();
   await page.locator('[data-pit="2"]').click();
+  await page.getByRole('button', { name: 'Semer 5 graines' }).click();
   await expect(page.getByText('Coup 02', { exact: true })).toBeVisible({ timeout: 6000 });
+  await expect(page.locator('.board-area')).toHaveAttribute('aria-busy', 'false');
   await page.reload();
   await expect(page.getByText('Coup 02', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Un conseil' }).click();
   await expect(page.locator('.hint-note')).toBeVisible({ timeout: 6000 });
   const hinted = page.locator('.pit-hint');
   await expect(hinted).toHaveCount(1);
+  await showMenu(page);
   await page.getByRole('button', { name: 'Revoir le coup 1, S3', exact: true }).click();
   await expect(page.getByText('Relecture · coup 1')).toBeVisible();
   await expect(page.locator('.pit-playable')).toHaveCount(0);
@@ -35,14 +43,17 @@ test('local two player setup and alternating turns', async ({ page }) => {
   await modal.getByRole('button', { name: 'C’est parti' }).click();
   await expect(page.getByText('Au tour de Alice')).toBeVisible();
   await page.locator('[data-pit="0"]').click();
+  await page.getByRole('button', { name: 'Semer 5 graines' }).click();
   await expect(page.getByText('Au tour de Bob')).toBeVisible();
   await page.locator('[data-pit="7"]').click();
+  await page.getByRole('button', { name: 'Semer 5 graines' }).click();
   await expect(page.getByText('Au tour de Alice')).toBeVisible();
 });
 test('rules, settings, import validation and transfer', async ({ page }) => {
   await page.getByRole('button', { name: 'Aide et règles' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByRole('button', { name: 'J’ai compris, à moi de jouer' }).click();
+  await showMenu(page);
   await page.getByRole('button', { name: 'Mes parties', exact: true }).click();
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Exporter', exact: true }).click();
@@ -53,7 +64,7 @@ test('rules, settings, import validation and transfer', async ({ page }) => {
     mimeType: 'application/json',
     buffer: Buffer.from('{"bad":true}'),
   });
-  await expect(page.getByRole('status')).toContainText('Sauvegarde invalide');
+  await expect(page.locator('.toast')).toContainText('Sauvegarde invalide');
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('songo.session.v2')!));
   saved.moves = [2, 9];
   saved.names = ['Importé', 'Esprit Songo'];
@@ -100,15 +111,14 @@ test('finished games record one result and clearing statistics preserves the boa
     moves,
     createdAt: new Date().toISOString(),
   };
-  await page
-    .locator('input[type=file]')
-    .setInputFiles({
-      name: 'finished.json',
-      mimeType: 'application/json',
-      buffer: Buffer.from(JSON.stringify(session)),
-    });
+  await page.locator('input[type=file]').setInputFiles({
+    name: 'finished.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(session)),
+  });
   await expect(page.locator('.result-banner')).toBeVisible();
   await page.reload();
+  await showMenu(page);
   await page.getByRole('button', { name: 'Mes parties', exact: true }).click();
   await expect(page.locator('.results-table .result-tag')).toHaveCount(1);
   await page.getByRole('button', { name: 'Effacer l’historique' }).click();
@@ -125,9 +135,11 @@ test('works offline after service worker activation', async ({ page, context }) 
   await page.waitForFunction(() => !!navigator.serviceWorker.controller);
   await context.setOffline(true);
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Chaque graine compte.' })).toBeVisible();
+  await expect(page.locator('.wood-board')).toBeVisible();
   await page.locator('[data-pit="0"]').click();
+  await page.getByRole('button', { name: 'Semer 5 graines' }).click();
   await expect(page.getByText('Coup 02', { exact: true })).toBeVisible({ timeout: 6000 });
+  await expect(page.locator('.board-area')).toHaveAttribute('aria-busy', 'false');
   await context.setOffline(false);
 });
 test('layout fits viewport and controls meet accessibility rules', async ({ page }, testInfo) => {

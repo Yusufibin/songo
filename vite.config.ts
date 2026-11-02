@@ -13,8 +13,8 @@ export default defineConfig({
         short_name: 'Songo',
         lang: 'fr',
         description: 'Le jeu de stratégie des peuples ekang. Solo, duel local et jeu hors ligne.',
-        theme_color: '#263e32',
-        background_color: '#f6f5ef',
+        theme_color: '#0c1916',
+        background_color: '#0c1916',
         display: 'standalone',
         icons: [
           { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },

@@ -1,6 +1,8 @@
 # Songo
 
-Une nouvelle application du jeu de stratégie des peuples ekang. Interface française adaptée au mobile, plateau en bois, règles explicites et fonctionnement hors ligne après une première visite.
+Une nouvelle application du jeu de stratégie des peuples ekang. Interface de jeu mobile avec arène immersive, plateau en bois, règles explicites et fonctionnement hors ligne après une première visite.
+
+<img src="docs/songo-mobile.png" alt="Songo sur téléphone : sélection et aperçu du parcours" width="320" />
 
 ![Le plateau Songo sur ordinateur](docs/songo-desktop.png)
 
@@ -8,6 +10,9 @@ Une nouvelle application du jeu de stratégie des peuples ekang. Interface fran�
 
 - **Solo** : trois difficultés, recherche minimax avec élagage alpha-bêta et approfondissement itératif. Calcul dans un Web Worker avec un budget maximal de 750 ms.
 - **Duel local** : deux personnes sur le même appareil, avec leurs prénoms.
+- **Tactile** : touchez une case pour la sélectionner et voir le parcours. Appuyez sur « Semer » ou touchez à nouveau la case sélectionnée pour jouer. Vous pouvez changer de case ou annuler la sélection.
+- **Mouvements** : ramassage, semis graine par graine, captures vers le score et récolte finale. Le tour suivant attend la fin du mouvement. Les animations sont facultatives et respectent la réduction des mouvements du système.
+- **Mobile** : deux colonnes en portrait (sud vers le bas, nord vers le haut), plateau horizontal en paysage, cibles d’au moins 44 px sur les formats mobiles testés. Le mode immersif est activé à l’ouverture sur téléphone ; le bouton de réduction en haut permet de retrouver les menus. Sur ordinateur, utilisez « Agrandir le plateau ».
 - Conseils, annulation, historique et relecture de chaque coup.
 - Sauvegarde automatique, reprise après fermeture, export/import JSON validé par rejeu.
 - Statistiques locales, son optionnel, repères et animations configurables.
@@ -56,7 +61,7 @@ Voir [l’architecture et les limites](docs/architecture.md) et [la variante imp
 
 `npm run build` produit **dist/**, déployable sur un CDN statique : Cloudflare Pages, Netlify, GitHub Pages ou tout serveur HTTP. Aucun secret ni serveur de calcul n’est nécessaire. Les chemins relatifs permettent également un hébergement sous `/songo/`.
 
-Le workflow **Quality** exécute les tests et la compilation à chaque pull request. Le workflow **Publish to GitHub Pages** peut être lancé manuellement après activation de Pages avec la source « GitHub Actions ». Il publie le dossier `dist`.
+Le workflow **Quality** exécute les tests et la compilation à chaque pull request et à chaque push sur `main` ou `master`. Le workflow **Publish to GitHub Pages** peut être lancé manuellement après activation de Pages avec la source « GitHub Actions ». Il publie le dossier `dist`.
 
 Les ressources portent un hash ; servez-les avec un cache long. Servez `index.html` et `sw.js` avec revalidation. `public/_headers` fournit ces règles et des en-têtes de sécurité pour les hébergeurs qui comprennent ce format. Adaptez-les au serveur retenu.
 
